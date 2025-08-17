@@ -58,6 +58,7 @@ pub unsafe fn load_arg(loc: Loc, arg: Arg, output: *mut String_Builder, data: *c
                 i += 1;
             }
             sb_appendf(output, c!("%c\n"), '"');
+            sb_appendf(output, c!("    push %zu\n"), i);
         }
     }
 }
@@ -157,10 +158,25 @@ pub unsafe fn generate_function(
             Op::ExternalAssign { .. } => missingf!(op.loc, c!("Op::ExternalAssign\n")),
             Op::Store { .. } => missingf!(op.loc, c!("Op::Store\n")),
             Op::Funcall { fun, args, .. } => {
-                for i in 0..args.count {
-                    load_arg(op.loc, *args.items.add(i), output, data);
+                if let Arg::External(name) = fun {
+                    if strcmp(name, c!("printf")) == 0 {
+                        // note: we hijack the printf since we need to perform some
+                        //      steps before actual calling it thru native
+                        //
+                        // 1. load args in reverse, this makes the printf format string be at the
+                        //    top of the stack
+                        // 2. push the number of format arguments
+                        // 3. push all the arguments
+                        for i in (0..args.count).rev() {
+                            load_arg(op.loc, *args.items.add(i), output, data);
+                        }
+                    } else {
+                        for i in 0..args.count {
+                            load_arg(op.loc, *args.items.add(i), output, data);
+                        }
+                    }
+                    call_arg(op.loc, fun, output, args.count, extrns);
                 }
-                call_arg(op.loc, fun, output, args.count, extrns);
             }
             Op::Label { .. } => missingf!(op.loc, c!("Op::Label\n")),
             Op::JmpLabel { .. } => missingf!(op.loc, c!("Op::JmpLabel\n")),
