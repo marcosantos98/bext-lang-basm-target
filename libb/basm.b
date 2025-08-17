@@ -1,3 +1,10 @@
+extrn putchar;
+
+/* 
+
+This is the old implementation of putchar using __asm__ and native write provided by bm.
+It worked, but since we load functions from a dll, we can declare putchar extrn and implement it in lib.c.
+
 putchar(c) {
     // needs `swap` since the top value is the return addr
     // push 69
@@ -18,4 +25,5 @@ putchar(c) {
     	"%native write",
     	"native write"
     );
-}
+} 
+*/
